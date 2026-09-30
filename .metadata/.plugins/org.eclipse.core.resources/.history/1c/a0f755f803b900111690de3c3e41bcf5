@@ -1,5 +1,0 @@
-package com.expenseanalyzer.service;
-
-public class ExpenseQueryService {
-
-}
