@@ -1,0 +1,1040 @@
+package com.expenseanalyzer.main;
+import java.util.Map;
+import com.expenseanalyzer.enums.Category;
+import com.expenseanalyzer.util.ConsoleUtil;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Scanner;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
+import java.util.Scanner;
+
+import com.expenseanalyzer.enums.Category;
+import com.expenseanalyzer.enums.ExpenseType;
+import com.expenseanalyzer.enums.PaymentMethod;
+import com.expenseanalyzer.exception.DuplicateExpenseException;
+import com.expenseanalyzer.exception.ExpenseNotFoundException;
+import com.expenseanalyzer.exception.InvalidExpenseException;
+import com.expenseanalyzer.model.Expense;
+import com.expenseanalyzer.repository.ExpenseRepository;
+import com.expenseanalyzer.repository.InMemoryExpenseRepository;
+import com.expenseanalyzer.service.ExpenseService;
+import com.expenseanalyzer.service.AnalysisService;
+import com.expenseanalyzer.service.ReportService;
+
+public class Main {
+
+    private static final Scanner scanner = new Scanner(System.in);
+
+    // Repository
+    private static final ExpenseRepository expenseRepository =
+            new InMemoryExpenseRepository();
+
+    // Service
+    private static final ExpenseService expenseService =
+            new ExpenseService(expenseRepository);
+    
+    private static final AnalysisService analysisService =
+            new AnalysisService(expenseRepository);
+    private static final ReportService reportService =
+            new ReportService(expenseRepository);
+
+    // ANSI color codes
+    private static final String GREEN = "\u001B[32m";
+    private static final String RED = "\u001B[31m";
+    private static final String RESET = "\u001B[0m";
+
+    public static void main(String[] args) {
+
+        boolean running = true;
+
+        System.out.println();
+        System.out.println("==============================================");
+        System.out.println("          EXPENSE PATTERN ANALYZER");
+        System.out.println("==============================================");
+
+        while (running) {
+
+            displayMenu();
+
+            int choice = readInt("Enter your choice: ");
+
+            try {
+
+                switch (choice) {
+
+                    case 1:
+                        addExpense();
+                        break;
+
+                    case 2:
+                        viewAllExpenses();
+                        break;
+
+                    case 3:
+                        findExpense();
+                        break;
+
+                    case 4:
+                        updateExpense();
+                        break;
+
+                    case 5:
+                        deleteExpense();
+                        break;
+
+                    case 6:
+                        showExpenseCount();
+                        break;
+
+                    case 7:
+                        showAnalysisMenu();
+                        break;
+
+                    case 8:
+                        showReportMenu();
+                    break;
+
+                case 9:
+                    deleteAllExpenses();
+                    break;
+
+                    case 0:
+                        running = false;
+
+                        printSuccess(
+                                "Thank you for using Expense Pattern Analyzer!"
+                        );
+                        break;
+
+                    default:
+                        printError(
+                                "Invalid choice. Please select a valid option."
+                        );
+                }
+
+            } catch (InvalidExpenseException
+                    | DuplicateExpenseException
+                    | ExpenseNotFoundException e) {
+
+                printError(e.getMessage());
+            }
+        }
+
+        scanner.close();
+    }
+
+    // =========================================================
+    // DISPLAY MENU
+    // =========================================================
+
+    private static void displayMenu() {
+
+        System.out.println();
+        System.out.println("----------------------------------------------");
+        System.out.println("                    MENU");
+        System.out.println("----------------------------------------------");
+        System.out.println("1. Add Expense");
+        System.out.println("2. View All Expenses");
+        System.out.println("3. Find Expense by ID");
+        System.out.println("4. Update Expense");
+        System.out.println("5. Delete Expense");
+        System.out.println("6. View Expense Count");
+        System.out.println("7. Expense Analysis");
+        System.out.println("8. Expense Reports");
+        System.out.println("9. Delete All Expenses");
+        System.out.println("0. Exit");
+        System.out.println("----------------------------------------------");
+    }
+
+    // =========================================================
+    // ADD EXPENSE
+    // =========================================================
+
+    private static void addExpense() {
+
+        System.out.println();
+        System.out.println("============== ADD EXPENSE ==============");
+
+        // Take ID
+        Long expenseId = readLong("Enter Expense ID: ");
+
+        // Immediately check duplicate ID
+        if (expenseService.expenseExists(expenseId)) {
+
+            throw new DuplicateExpenseException(
+                    "Expense ID " + expenseId
+                            + " already exists. Please use a different ID."
+            );
+        }
+
+        // Take amount
+        double amount = readDouble("Enter Amount: ");
+
+        // Take category
+        Category category = readCategory();
+
+        // Take description
+        String description = readString("Enter Description: ");
+
+        // Take date from user
+        LocalDate expenseDate = readDate();
+
+        // Take payment method
+        PaymentMethod paymentMethod = readPaymentMethod();
+
+        // Take expense type
+        ExpenseType expenseType = readExpenseType();
+
+        // Create Expense object
+        Expense expense = new Expense(
+                expenseId,
+                amount,
+                category,
+                description,
+                expenseDate,
+                paymentMethod,
+                expenseType
+        );
+
+        // Send expense to service
+        expenseService.addExpense(expense);
+
+        printSuccess("Expense added successfully!");
+    }
+
+    // =========================================================
+    // VIEW ALL EXPENSES
+    // =========================================================
+
+    private static void viewAllExpenses() {
+
+        System.out.println();
+        System.out.println("============ ALL EXPENSES ============");
+
+        List<Expense> expenses = expenseService.getAllExpenses();
+
+        if (expenses.isEmpty()) {
+
+            printError("No expenses available.");
+            return;
+        }
+
+        for (Expense expense : expenses) {
+
+            displayExpense(expense);
+        }
+    }
+
+    // =========================================================
+    // DISPLAY SINGLE EXPENSE
+    // =========================================================
+
+    private static void displayExpense(Expense expense) {
+
+        System.out.println();
+        System.out.println("----------------------------------------------");
+        System.out.println("               EXPENSE DETAILS");
+        System.out.println("----------------------------------------------");
+
+        System.out.println(
+                "Expense ID       : " + expense.getExpenseId()
+        );
+
+        System.out.println(
+                "Amount           : ₹" + expense.getAmount()
+        );
+
+        System.out.println(
+                "Category         : " + expense.getCategory()
+        );
+
+        System.out.println(
+                "Description      : " + expense.getDescription()
+        );
+
+        System.out.println(
+                "Expense Date     : " + expense.getExpenseDate()
+        );
+
+        System.out.println(
+                "Payment Method   : " + expense.getPaymentMethod()
+        );
+
+        System.out.println(
+                "Expense Type     : " + expense.getExpenseType()
+        );
+
+        System.out.println("----------------------------------------------");
+    }
+
+    // =========================================================
+    // FIND EXPENSE
+    // =========================================================
+
+    private static void findExpense() {
+
+        System.out.println();
+        System.out.println("============ FIND EXPENSE ============");
+
+        Long expenseId = readLong("Enter Expense ID: ");
+
+        Expense expense = expenseService.getExpenseById(expenseId);
+
+        System.out.println();
+        printSuccess("Expense found!");
+
+        displayExpense(expense);
+    }
+
+    // =========================================================
+    // UPDATE EXPENSE
+    // =========================================================
+
+    private static void updateExpense() {
+
+        System.out.println();
+        System.out.println("=========== UPDATE EXPENSE ===========");
+
+        // Take ID first
+        Long expenseId = readLong(
+                "Enter Expense ID to update: "
+        );
+
+        // Immediately check whether ID exists
+        if (!expenseService.expenseExists(expenseId)) {
+
+            throw new ExpenseNotFoundException(
+                    "Expense with ID " + expenseId + " not found."
+            );
+        }
+
+        System.out.println();
+        System.out.println("Enter new expense details:");
+
+        // Amount
+        double amount = readDouble("Enter Amount: ");
+
+        // Category
+        Category category = readCategory();
+
+        // Description
+        String description = readString(
+                "Enter Description: "
+        );
+
+        // Date entered by user
+        LocalDate expenseDate = readDate();
+
+        // Payment method
+        PaymentMethod paymentMethod = readPaymentMethod();
+
+        // Expense type
+        ExpenseType expenseType = readExpenseType();
+
+        // Create updated object
+        Expense updatedExpense = new Expense(
+                expenseId,
+                amount,
+                category,
+                description,
+                expenseDate,
+                paymentMethod,
+                expenseType
+        );
+
+        // Update through service
+        expenseService.updateExpense(updatedExpense);
+
+        printSuccess("Expense updated successfully!");
+    }
+
+    // =========================================================
+    // DELETE EXPENSE
+    // =========================================================
+
+    private static void deleteExpense() {
+
+        System.out.println();
+        System.out.println("=========== DELETE EXPENSE ===========");
+
+        Long expenseId = readLong(
+                "Enter Expense ID to delete: "
+        );
+
+        expenseService.deleteExpense(expenseId);
+
+        printSuccess("Expense deleted successfully!");
+    }
+
+    // =========================================================
+    // EXPENSE COUNT
+    // =========================================================
+
+    private static void showExpenseCount() {
+
+        long count = expenseService.getExpenseCount();
+
+        System.out.println();
+        System.out.println("----------------------------------------------");
+        System.out.println(
+                "Total number of expenses: " + count
+        );
+        System.out.println("----------------------------------------------");
+    }
+
+ // =========================================================
+ // EXPENSE ANALYSIS MENU
+ // =========================================================
+
+ private static void showAnalysisMenu() {
+
+     boolean running = true;
+
+     while (running) {
+
+         System.out.println();
+         System.out.println("==============================================");
+         System.out.println("              EXPENSE ANALYSIS");
+         System.out.println("==============================================");
+         System.out.println("1. Total Spending");
+         System.out.println("2. Highest Expense");
+         System.out.println("3. Lowest Expense");
+         System.out.println("4. Average Expense");
+         System.out.println("5. Category-wise Spending");
+         System.out.println("6. Top Spending Category");
+         System.out.println("7. Expense Type Analysis");
+         System.out.println("8. Payment Method Analysis");
+         System.out.println("0. Back to Main Menu");
+         System.out.println("----------------------------------------------");
+
+         int choice = readInt("Enter your choice: ");
+
+         switch (choice) {
+
+             case 1:
+                 showTotalSpending();
+                 break;
+
+             case 2:
+                 showHighestExpense();
+                 break;
+
+             case 3:
+                 showLowestExpense();
+                 break;
+
+             case 4:
+                 showAverageExpense();
+                 break;
+
+             case 5:
+                 showCategoryWiseSpending();
+                 break;
+
+             case 6:
+                 showTopSpendingCategory();
+                 break;
+
+             case 7:
+                 showExpenseTypeAnalysis();
+                 break;
+
+             case 8:
+                 showPaymentMethodAnalysis();
+                 break;
+
+             case 0:
+                 running = false;
+                 break;
+
+             default:
+                 printError(
+                         "Invalid analysis choice."
+                 );
+         }
+     }
+ }
+ private static void showTotalSpending() {
+
+	    double total =
+	            analysisService.calculateTotalExpense();
+
+	    System.out.println();
+	    System.out.println("----------------------------------------------");
+	    System.out.println("              TOTAL SPENDING");
+	    System.out.println("----------------------------------------------");
+
+	    System.out.println(
+	            "Total Expense : ₹" + total
+	    );
+
+	    System.out.println("----------------------------------------------");
+	}
+ private static void showHighestExpense() {
+
+	    System.out.println();
+	    System.out.println("----------------------------------------------");
+	    System.out.println("              HIGHEST EXPENSE");
+	    System.out.println("----------------------------------------------");
+
+	    analysisService.getHighestExpense()
+	            .ifPresentOrElse(
+
+	                    expense -> displayExpense(expense),
+
+	                    () -> printError(
+	                            "No expenses available for analysis."
+	                    )
+	            );
+	}
+ private static void showLowestExpense() {
+
+	    System.out.println();
+	    System.out.println("----------------------------------------------");
+	    System.out.println("               LOWEST EXPENSE");
+	    System.out.println("----------------------------------------------");
+
+	    analysisService.getLowestExpense()
+	            .ifPresentOrElse(
+
+	                    expense -> displayExpense(expense),
+
+	                    () -> printError(
+	                            "No expenses available for analysis."
+	                    )
+	            );
+	}
+ private static void showAverageExpense() {
+
+	    double average =
+	            analysisService.calculateAverageExpense();
+
+	    System.out.println();
+	    System.out.println("----------------------------------------------");
+	    System.out.println("              AVERAGE EXPENSE");
+	    System.out.println("----------------------------------------------");
+
+	    System.out.println(
+	            "Average Expense : ₹" + average
+	    );
+
+	    System.out.println("----------------------------------------------");
+	}
+ private static void showCategoryWiseSpending() {
+
+	    System.out.println();
+	    System.out.println("----------------------------------------------");
+	    System.out.println("           CATEGORY-WISE SPENDING");
+	    System.out.println("----------------------------------------------");
+
+	    Map<Category, Double> categoryExpenses =
+	            analysisService.getCategoryWiseExpenses();
+
+	    if (categoryExpenses.isEmpty()) {
+
+	        printError(
+	                "No expenses available for analysis."
+	        );
+
+	        return;
+	    }
+
+	    for (Map.Entry<Category, Double> entry
+	            : categoryExpenses.entrySet()) {
+
+	        System.out.println(
+	                entry.getKey() + " : ₹" + entry.getValue()
+	        );
+	    }
+
+	    System.out.println("----------------------------------------------");
+	}
+ private static void showTopSpendingCategory() {
+
+	    System.out.println();
+	    System.out.println("----------------------------------------------");
+	    System.out.println("          TOP SPENDING CATEGORY");
+	    System.out.println("----------------------------------------------");
+
+	    analysisService.getTopSpendingCategory()
+	            .ifPresentOrElse(
+
+	                    category -> {
+
+	                        Map<Category, Double> categoryExpenses =
+	                                analysisService
+	                                        .getCategoryWiseExpenses();
+
+	                        double amount =
+	                                categoryExpenses.get(category);
+
+	                        System.out.println(
+	                                "Category : " + category
+	                        );
+
+	                        System.out.println(
+	                                "Amount   : ₹" + amount
+	                        );
+	                    },
+
+	                    () -> printError(
+	                            "No expenses available for analysis."
+	                    )
+	            );
+
+	    System.out.println("----------------------------------------------");
+	}
+ private static void showExpenseTypeAnalysis() {
+
+	    System.out.println();
+	    System.out.println("----------------------------------------------");
+	    System.out.println("             EXPENSE TYPE ANALYSIS");
+	    System.out.println("----------------------------------------------");
+
+	    Map<ExpenseType, Double> typeExpenses =
+	            analysisService.getExpenseTypeWiseExpenses();
+
+	    if (typeExpenses.isEmpty()) {
+
+	        printError(
+	                "No expenses available for analysis."
+	        );
+
+	        return;
+	    }
+
+	    for (Map.Entry<ExpenseType, Double> entry
+	            : typeExpenses.entrySet()) {
+
+	        System.out.println(
+	                entry.getKey() + " : ₹" + entry.getValue()
+	        );
+	    }
+
+	    System.out.println("----------------------------------------------");
+	}
+ private static void showPaymentMethodAnalysis() {
+
+	    System.out.println();
+	    System.out.println("----------------------------------------------");
+	    System.out.println("          PAYMENT METHOD ANALYSIS");
+	    System.out.println("----------------------------------------------");
+
+	    Map<PaymentMethod, Double> paymentExpenses =
+	            analysisService.getPaymentMethodWiseExpenses();
+
+	    if (paymentExpenses.isEmpty()) {
+
+	        printError(
+	                "No expenses available for analysis."
+	        );
+
+	        return;
+	    }
+
+	    for (Map.Entry<PaymentMethod, Double> entry
+	            : paymentExpenses.entrySet()) {
+
+	        System.out.println(
+	                entry.getKey() + " : ₹" + entry.getValue()
+	        );
+	    }
+
+	    System.out.println("----------------------------------------------");
+	}
+//=========================================================
+//EXPENSE REPORT MENU
+//=========================================================
+
+private static void showReportMenu() {
+
+  boolean running = true;
+
+  while (running) {
+
+      System.out.println();
+      System.out.println("==============================================");
+      System.out.println("                EXPENSE REPORTS");
+      System.out.println("==============================================");
+      System.out.println("1. Overall Expense Report");
+      System.out.println("2. Category Expense Report");
+      System.out.println("3. Expense Type Report");
+      System.out.println("4. Payment Method Report");
+      System.out.println("5. Monthly Expense Report");
+      System.out.println("0. Back to Main Menu");
+      System.out.println("----------------------------------------------");
+
+      int choice = readInt("Enter your choice: ");
+
+      switch (choice) {
+
+          case 1:
+              showOverallReport();
+              break;
+
+          case 2:
+              showCategoryReport();
+              break;
+
+          case 3:
+              showExpenseTypeReport();
+              break;
+
+          case 4:
+              showPaymentMethodReport();
+              break;
+
+          case 5:
+              showMonthlyReport();
+              break;
+
+          case 0:
+              running = false;
+              break;
+
+          default:
+              printError(
+                      "Invalid report choice."
+              );
+      }
+  }
+}
+private static void showOverallReport() {
+
+    String report =
+            reportService.generateOverallReport();
+
+    System.out.println(report);
+}
+private static void showCategoryReport() {
+
+    String report =
+            reportService.generateCategoryReport();
+
+    System.out.println(report);
+}
+private static void showExpenseTypeReport() {
+
+    String report =
+            reportService.generateExpenseTypeReport();
+
+    System.out.println(report);
+}
+private static void showPaymentMethodReport() {
+
+    String report =
+            reportService.generatePaymentMethodReport();
+
+    System.out.println(report);
+}
+private static void showMonthlyReport() {
+
+    System.out.println();
+    System.out.println("----------------------------------------------");
+    System.out.println("             MONTHLY EXPENSE REPORT");
+    System.out.println("----------------------------------------------");
+
+    int year = readInt("Enter year: ");
+
+    int month = readInt("Enter month (1-12): ");
+
+    if (month < 1 || month > 12) {
+
+        printError(
+                "Invalid month. Please enter a value from 1 to 12."
+        );
+
+        return;
+    }
+
+    YearMonth selectedMonth =
+            YearMonth.of(year, month);
+
+    String report =
+            reportService.generateMonthlyReport(
+                    selectedMonth
+            );
+
+    System.out.println(report);
+}
+    // =========================================================
+    // DELETE ALL EXPENSES
+    // =========================================================
+
+    private static void deleteAllExpenses() {
+
+        System.out.println();
+        System.out.println("========= DELETE ALL EXPENSES =========");
+
+        String confirmation = readString(
+                "Are you sure? Type YES to continue: "
+        );
+
+        if (confirmation.equalsIgnoreCase("YES")) {
+
+            expenseService.deleteAllExpenses();
+
+            printSuccess(
+                    "All expenses deleted successfully."
+            );
+
+        } else {
+
+            printError("Operation cancelled.");
+        }
+    }
+
+    // =========================================================
+    // READ INTEGER
+    // =========================================================
+
+    private static int readInt(String message) {
+
+        while (true) {
+
+            try {
+
+                System.out.print(message);
+
+                return Integer.parseInt(
+                        scanner.nextLine()
+                );
+
+            } catch (NumberFormatException e) {
+
+                printError(
+                        "Please enter a valid integer."
+                );
+            }
+        }
+    }
+
+    // =========================================================
+    // READ LONG
+    // =========================================================
+
+    private static Long readLong(String message) {
+
+        while (true) {
+
+            try {
+
+                System.out.print(message);
+
+                return Long.parseLong(
+                        scanner.nextLine()
+                );
+
+            } catch (NumberFormatException e) {
+
+                printError(
+                        "Please enter a valid number."
+                );
+            }
+        }
+    }
+
+    // =========================================================
+    // READ DOUBLE
+    // =========================================================
+
+    private static double readDouble(String message) {
+
+        while (true) {
+
+            try {
+
+                System.out.print(message);
+
+                return Double.parseDouble(
+                        scanner.nextLine()
+                );
+
+            } catch (NumberFormatException e) {
+
+                printError(
+                        "Please enter a valid amount."
+                );
+            }
+        }
+    }
+
+    // =========================================================
+    // READ STRING
+    // =========================================================
+
+    private static String readString(String message) {
+
+        System.out.print(message);
+
+        return scanner.nextLine();
+    }
+
+    // =========================================================
+    // READ DATE
+    // =========================================================
+
+    private static LocalDate readDate() {
+
+        while (true) {
+
+            try {
+
+                System.out.print(
+                        "Enter Date (YYYY-MM-DD): "
+                );
+
+                return LocalDate.parse(
+                        scanner.nextLine()
+                );
+
+            } catch (Exception e) {
+
+                printError(
+                        "Invalid date. Please use YYYY-MM-DD format."
+                );
+            }
+        }
+    }
+
+    // =========================================================
+    // READ CATEGORY
+    // =========================================================
+
+    private static Category readCategory() {
+
+        while (true) {
+
+            System.out.println();
+            System.out.println("Select Category:");
+
+            Category[] categories = Category.values();
+
+            for (int i = 0; i < categories.length; i++) {
+
+                System.out.println(
+                        (i + 1) + ". " + categories[i]
+                );
+            }
+
+            int choice = readInt(
+                    "Enter category number: "
+            );
+
+            if (choice >= 1
+                    && choice <= categories.length) {
+
+                return categories[choice - 1];
+
+            } else {
+
+                printError(
+                        "Invalid category choice."
+                );
+            }
+        }
+    }
+
+    // =========================================================
+    // READ PAYMENT METHOD
+    // =========================================================
+
+    private static PaymentMethod readPaymentMethod() {
+
+        while (true) {
+
+            System.out.println();
+            System.out.println("Select Payment Method:");
+
+            PaymentMethod[] methods =
+                    PaymentMethod.values();
+
+            for (int i = 0; i < methods.length; i++) {
+
+                System.out.println(
+                        (i + 1) + ". " + methods[i]
+                );
+            }
+
+            int choice = readInt(
+                    "Enter payment method number: "
+            );
+
+            if (choice >= 1
+                    && choice <= methods.length) {
+
+                return methods[choice - 1];
+
+            } else {
+
+                printError(
+                        "Invalid payment method choice."
+                );
+            }
+        }
+    }
+
+    // =========================================================
+    // READ EXPENSE TYPE
+    // =========================================================
+
+    private static ExpenseType readExpenseType() {
+
+        while (true) {
+
+            System.out.println();
+            System.out.println("Select Expense Type:");
+
+            ExpenseType[] types =
+                    ExpenseType.values();
+
+            for (int i = 0; i < types.length; i++) {
+
+                System.out.println(
+                        (i + 1) + ". " + types[i]
+                );
+            }
+
+            int choice = readInt(
+                    "Enter expense type number: "
+            );
+
+            if (choice >= 1
+                    && choice <= types.length) {
+
+                return types[choice - 1];
+
+            } else {
+
+                printError(
+                        "Invalid expense type choice."
+                );
+            }
+        }
+    }
+
+    // =========================================================
+    // SUCCESS MESSAGE - GREEN
+    // =========================================================
+
+    private static void printSuccess(String message) {
+
+        System.out.println(
+                GREEN + "SUCCESS: " + message + RESET
+        );
+    }
+
+    // =========================================================
+    // ERROR MESSAGE - RED
+    // =========================================================
+
+    private static void printError(String message) {
+
+        System.out.println(
+                RED + "ERROR: " + message + RESET
+        );
+    }
+}

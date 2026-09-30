@@ -1,0 +1,4 @@
+INDEX VERSION 1.134+C:\Users\saiki\OneDrive\Desktop\Project_Expense_Tracker\.metadata\.plugins\org.eclipse.jdt.core
+4039089770.index
+666992703.index
+1865797976.index

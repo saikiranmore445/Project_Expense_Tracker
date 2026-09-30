@@ -1,0 +1,5 @@
+package com.expenseanalyzer.dto;
+
+public class ExpenseMapper {
+
+}
