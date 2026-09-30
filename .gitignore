@@ -1,0 +1,22 @@
+# Eclipse
+.metadata/
+.settings/
+.classpath
+.project
+
+# Java
+bin/
+target/
+*.class
+
+# Gradle
+.gradle/
+build/
+
+# IntelliJ
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
