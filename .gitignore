@@ -4,12 +4,12 @@
 .classpath
 .project
 
-# Java
+# Java compiled files
+*.class
 bin/
 target/
-*.class
 
-# Gradle
+# Build tools
 .gradle/
 build/
 
