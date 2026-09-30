@@ -1,0 +1,274 @@
+package com.expenseanalyzer.service;
+
+import java.util.List;
+import java.util.Optional;
+
+import com.expenseanalyzer.dto.ExpenseDTO;
+import com.expenseanalyzer.exception.DuplicateExpenseException;
+import com.expenseanalyzer.exception.ExpenseNotFoundException;
+import com.expenseanalyzer.exception.InvalidExpenseException;
+import com.expenseanalyzer.model.Expense;
+import com.expenseanalyzer.repository.ExpenseRepository;
+import com.expenseanalyzer.util.ExpenseMapper;
+import com.expenseanalyzer.util.ValidationUtil;
+
+public class ExpenseService {
+
+    private final ExpenseRepository expenseRepository;
+
+    // =========================================================
+    // CONSTRUCTOR
+    // =========================================================
+
+    public ExpenseService(ExpenseRepository expenseRepository) {
+        this.expenseRepository = expenseRepository;
+    }
+
+    // =========================================================
+    // ADD EXPENSE
+    // =========================================================
+
+    public void addExpense(Expense expense) {
+
+        validateExpense(expense);
+
+        if (expenseRepository.existsById(expense.getExpenseId())) {
+
+            throw new DuplicateExpenseException(
+                    "Expense with ID " + expense.getExpenseId()
+                            + " already exists"
+            );
+        }
+
+        expenseRepository.save(expense);
+    }
+
+    // =========================================================
+    // GET EXPENSE BY ID
+    // =========================================================
+
+    public Expense getExpenseById(Long expenseId) {
+
+        validateExpenseId(expenseId);
+
+        Optional<Expense> expense =
+                expenseRepository.findById(expenseId);
+
+        if (expense.isPresent()) {
+            return expense.get();
+        }
+
+        throw new ExpenseNotFoundException(
+                "Expense with ID " + expenseId + " not found"
+        );
+    }
+
+    // =========================================================
+    // GET EXPENSE DTO BY ID
+    // =========================================================
+
+    public ExpenseDTO getExpenseDTOById(Long expenseId) {
+
+        Expense expense = getExpenseById(expenseId);
+
+        return ExpenseMapper.toDTO(expense);
+    }
+
+    // =========================================================
+    // GET ALL EXPENSES
+    // =========================================================
+
+    public List<Expense> getAllExpenses() {
+
+        return expenseRepository.findAll();
+    }
+
+    // =========================================================
+    // UPDATE EXPENSE
+    // =========================================================
+
+    public void updateExpense(Expense expense) {
+
+        validateExpense(expense);
+
+        if (!expenseRepository.existsById(
+                expense.getExpenseId())) {
+
+            throw new ExpenseNotFoundException(
+                    "Expense with ID " + expense.getExpenseId()
+                            + " not found"
+            );
+        }
+
+        expenseRepository.update(expense);
+    }
+
+    // =========================================================
+    // UPDATE EXPENSE USING DTO
+    // =========================================================
+
+    public void updateExpense(ExpenseDTO expenseDTO) {
+
+        if (expenseDTO == null) {
+
+            throw new InvalidExpenseException(
+                    "Expense data cannot be null"
+            );
+        }
+
+        // Convert DTO to Entity
+        Expense expense =
+                ExpenseMapper.toExpense(expenseDTO);
+
+        // Validate Entity
+        validateExpense(expense);
+
+        // Check whether expense exists
+        if (!expenseRepository.existsById(
+                expense.getExpenseId())) {
+
+            throw new ExpenseNotFoundException(
+                    "Expense with ID "
+                            + expense.getExpenseId()
+                            + " not found"
+            );
+        }
+
+        // Update repository
+        expenseRepository.update(expense);
+    }
+
+    // =========================================================
+    // DELETE EXPENSE
+    // =========================================================
+
+    public void deleteExpense(Long expenseId) {
+
+        validateExpenseId(expenseId);
+
+        boolean deleted =
+                expenseRepository.deleteById(expenseId);
+
+        if (!deleted) {
+
+            throw new ExpenseNotFoundException(
+                    "Expense with ID " + expenseId
+                            + " not found"
+            );
+        }
+    }
+
+    // =========================================================
+    // CHECK EXPENSE EXISTS
+    // =========================================================
+
+    public boolean expenseExists(Long expenseId) {
+
+        validateExpenseId(expenseId);
+
+        return expenseRepository.existsById(expenseId);
+    }
+
+    // =========================================================
+    // GET EXPENSE COUNT
+    // =========================================================
+
+    public long getExpenseCount() {
+
+        return expenseRepository.count();
+    }
+
+    // =========================================================
+    // DELETE ALL EXPENSES
+    // =========================================================
+
+    public void deleteAllExpenses() {
+
+        expenseRepository.deleteAll();
+    }
+
+    // =========================================================
+    // VALIDATE COMPLETE EXPENSE
+    // =========================================================
+
+    private void validateExpense(Expense expense) {
+
+        if (expense == null) {
+
+            throw new InvalidExpenseException(
+                    "Expense cannot be null"
+            );
+        }
+
+        // Validate ID
+        validateExpenseId(
+                expense.getExpenseId()
+        );
+
+        // Validate amount
+        if (!ValidationUtil.isValidAmount(
+                expense.getAmount())) {
+
+            throw new InvalidExpenseException(
+                    "Expense amount must be greater than zero"
+            );
+        }
+
+        // Validate category
+        if (expense.getCategory() == null) {
+
+            throw new InvalidExpenseException(
+                    "Expense category cannot be null"
+            );
+        }
+
+        // Validate description
+        if (!ValidationUtil.isValidDescription(
+                expense.getDescription())) {
+
+            throw new InvalidExpenseException(
+                    "Expense description cannot be empty"
+            );
+        }
+
+        // Validate date
+        if (!ValidationUtil.isDateNotInFuture(
+                expense.getExpenseDate())) {
+
+            throw new InvalidExpenseException(
+                    "Expense date cannot be null or in the future"
+            );
+        }
+
+        // Validate payment method
+        if (expense.getPaymentMethod() == null) {
+
+            throw new InvalidExpenseException(
+                    "Payment method cannot be null"
+            );
+        }
+
+        // Validate expense type
+        if (expense.getExpenseType() == null) {
+
+            throw new InvalidExpenseException(
+                    "Expense type cannot be null"
+            );
+        }
+    }
+
+    // =========================================================
+    // VALIDATE EXPENSE ID
+    // =========================================================
+
+    private void validateExpenseId(Long expenseId) {
+
+        if (!ValidationUtil.isValidExpenseId(
+                expenseId)) {
+
+            throw new InvalidExpenseException(
+                    "Expense ID must be greater than zero"
+            );
+        }
+    }
+}

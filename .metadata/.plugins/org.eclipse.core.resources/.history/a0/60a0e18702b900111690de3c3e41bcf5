@@ -1,0 +1,5 @@
+package com.expenseanalyzer.service;
+
+public class ReportService {
+
+}
